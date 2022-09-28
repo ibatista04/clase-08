@@ -7,8 +7,9 @@ p_load(tidyverse, # funciones para manipular/limpiar conjuntos de datos.
        rio, # función import/export: permite leer/escribir archivos desde diferentes formatos. 
        skimr, # función skim: describe un conjunto de datos
        janitor) # función tabyl: frecuencias relativas
+getwd
 
-#### **Obtener conjunto de datos:**
+#### **Obtener conjunto de datos: PEGAR LOS DATOS**
 cg <- import("input/Enero - Cabecera - Caracteristicas generales (Personas).csv") %>% clean_names()
 ocu <- import("input/Enero - Cabecera - Ocupados.csv") %>% clean_names()
 geih <- left_join(x = cg, y = ocu, by = c("directorio","secuencia_p","orden"))
@@ -20,13 +21,31 @@ geih <- left_join(x = cg, y = ocu, by = c("directorio","secuencia_p","orden"))
 ## **summary** ofrece una descripción general(quartil, media, mediana) de todas las columnas presentes.
 summary(geih[,c("inglabo", "p6020", "p6960","p6040","p6450")])
 
+skim(geih)
+##IMPRIMIR SOLO UNAS VARIABLES
+geih %>% select(inglabo,p6020) %>% skim()
+##SELECCIONO LO QUE QUIERO REVISAR Y DE QUÉ DATOS NA.RM=T HACE QUE NO TOME LOS NA
 geih %>% 
-select(inglabo,p6020,p6960) %>%
-summarize_all(list(min, max, median, mean), na.rm = T)
+  select(inglabo,p6020) %>%
+  summarize_all(list(min, max, median, mean), na.rm = T)
+geih %>% 
+select(inglabo,p6020) %>%
+summarize_all(list(min, max, median, mean), na.rm = F)
 
-### **1.2 Agrupadas**
+geih %>% mutate(rangos = case_when(p6040<18~"Menor de edad", p6040>=15&p6040<28~"Joven adulto", p6040>=28~"Adulto"))%>%
+group_by(rangos, p6020) %>%
+summarise(promedio_inglabo = mean(inglabo, na.rm = T), max_inglabo = max(inglabo, na.rm = T))
 
-## **group_by()** toma un tibble/data.frame y lo convierte en un tibble agrupado, donde las operaciones son realizadas por grupo. 
+
+a = geih %>% mutate(rangos = case_when(p6040<18~"Menor de edad", p6040>=15&p6040<28~"Joven adulto", p6040>=28~"Adulto"))%>%
+  group_by(p6020) %>%
+  summarise(promedio_inglabo = mean(inglabo, na.rm = T), max_inglabo = max(inglabo, na.rm = T), promedio_edad = mean(p6040, na.rm = T))
+##INGRESO PROMEDIO POR GRUPOS
+b = geih %>% group_by(p6020,p6450) %>% summarise(mean_ing=mean(inglabo,na.rm=T))
+b
+  ### **1.2 Agrupadas**
+
+## **group_by()** toma un tibble/data.frame y lo convierte en un tibble agrupado, ESPERANZAS CONDICIONADAS. 
 
 geih %>% 
 select(inglabo,p6020,p6960) %>% 
@@ -35,7 +54,13 @@ summarise(promedio_inglabo = mean(inglabo, na.rm = T),
           media_inglabo = median(inglabo, na.rm = T),
           promedio_p6960 = mean(p6960, na.rm = T),
           media_p6960 = median(p6960, na.rm = T))
-
+geih %>% 
+#Select(inglabo,p6020,p6960) %>% 
+group_by(p6020) %>%  
+summarise(promedio_inglabo = mean(inglabo, na.rm = T),
+            media_inglabo = median(inglabo, na.rm = T),
+            promedio_p6960 = mean(p6960, na.rm = T),
+            media_p6960 = median(p6960, na.rm = T))
 ## **[2.] Visualizaciones**
 
 ### **2.1** `ggplot()`
@@ -43,7 +68,8 @@ summarise(promedio_inglabo = mean(inglabo, na.rm = T),
 ## **"mapping" y "aes"** se usan para indicar las cordenadas de los datos.
 ggplot(data = geih , mapping = aes(x = p6040 , y = inglabo))
 
-## + geometry
+## + geometry DATA: BASE DE DATOS, MAPPING: X LUEGO Y """"+""" ENCONTRAR EL TIPO DE GRÁFICO ÓPTIMO(COLOR-COL="", 
+## TAMAÑO-SIZE="", AGRUPAR-GROUP= AS.FACTOR/CHARACTER(VARIABLE),)
 ggplot(data = geih , mapping = aes(x = p6040 , y = inglabo)) +
 geom_point(col = "red" , size = 0.5)
 
@@ -53,11 +79,11 @@ graph_1 <- ggplot(data = geih,
            geom_point(size = 0.5)
 graph_1
 
-## añadir atributos a este objeto
+## añadir atributos a este objeto LABEL=C(...) ES LA MONDÁ DE LA RESEÑA DE LA ESCALA
 graph_1 + scale_color_manual(values = c("2"="red" , "1"="blue") , label = c("1"="Hombre" , "2"="Mujer") , name = "Sexo")
 
 
-## **density chart:**
+## **density chart: FILTRANDO LOS DATOS COMO QUIERA O ME CONVENGA**
 density <- filter(geih, !is.na(p6450) & inglabo < 1e+07 ) %>% 
            ggplot(data=. , mapping = aes(x = inglabo, group = as.factor(p6450), fill = as.factor(p6450))) + 
            geom_density() 
